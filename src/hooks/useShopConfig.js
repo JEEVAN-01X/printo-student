@@ -1,31 +1,31 @@
-import { useState, useEffect } from 'react'
-
-const MOCK_CONFIG = {
-  shop_name:             'Printo',
-  is_accepting_orders:   true,
-  bw_price_per_page:     1.5,
-  colour_price_per_page: 10,
-}
-
-const MOCK_QUEUE = {
-  queue_length:        7,
-  avg_minutes_per_job: 4,
-}
+import { useState, useEffect, useCallback } from 'react'
 
 export function useShopConfig() {
-  const [config, setConfig]             = useState(null)
-  const [queueSummary, setQueueSummary] = useState(null)
-  const [loading, setLoading]           = useState(true)
-  const [error, setError]               = useState(null)
+  const [config, setConfig] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setConfig(MOCK_CONFIG)
-      setQueueSummary(MOCK_QUEUE)
+  const fetchConfig = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/v1/config')
+      const data = await res.json()
+      if (data?.success) {
+        setConfig(data.data.config)
+      } else {
+        setError({ message: 'Failed to load shop status', code: 'API' })
+      }
+    } catch {
+      setError({ message: 'Cannot reach server', code: 'NETWORK' })
+    } finally {
       setLoading(false)
-    }, 800)
-    return () => clearTimeout(timer)
+    }
   }, [])
 
-  return { config, queueSummary, loading, error }
+  useEffect(() => {
+    fetchConfig()
+  }, [fetchConfig])
+
+  return { config, loading, error, retry: fetchConfig }
 }
